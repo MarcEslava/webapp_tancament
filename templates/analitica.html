@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Analítica · Tancament (Metabase)</title>
+  <style>
+    /* Autònom: sense style.css del panell (evita col·lisions). */
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:#f4f7f1;color:#16211b;font-size:14px;
+         font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+         display:flex;flex-direction:column}
+    .bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 18px;
+         background:#fff;border-bottom:1px solid #e1e8dd}
+    .bar h1{font-size:17px;margin:0;font-weight:600}
+    .bar .grow{flex:1}
+    .bar a{font-size:13px;text-decoration:none;color:#1f7b41;font-weight:600}
+    .bar select{padding:8px 12px;border-radius:9px;border:1px solid #d2dbcb;font-size:14px;background:#fff;min-width:220px}
+    .bar button{padding:8px 14px;border-radius:9px;border:0;background:#eef3ec;color:#1f7b41;font-weight:600;cursor:pointer}
+    .stage{flex:1;position:relative;background:#ecefe8}
+    iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff}
+    .msg{max-width:680px;margin:40px auto;padding:24px 26px;background:#fff;border:1px solid #e1e8dd;border-radius:14px;line-height:1.6}
+    .msg h2{margin:0 0 8px;font-size:18px}
+    .msg code{background:#eef1ec;padding:1px 6px;border-radius:5px;font-family:ui-monospace,monospace}
+    .msg ol{margin:10px 0 0;padding-left:20px}
+    .msg .warn{color:#9a6a12;font-weight:600}
+    .hidden{display:none}
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <h1>📊 Analítica del tancament</h1>
+    <select id="dash" class="hidden"></select>
+    <button id="reload" class="hidden" title="Recarrega">↻</button>
+    <span class="grow"></span>
+    <a id="openmb" href="#" target="_blank" rel="noopener">Obrir a Metabase ↗</a>
+    <a href="/">← Panell</a>
+  </div>
+  <div class="stage">
+    <div id="msg" class="msg">Carregant analítica…</div>
+    <iframe id="frame" class="hidden" title="Dashboard Metabase"></iframe>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+    let MB = "";
+
+    function showMsg(html){ $("msg").innerHTML = html; $("msg").classList.remove("hidden"); $("frame").classList.add("hidden"); }
+    function showFrame(url){ $("frame").src = url; $("frame").classList.remove("hidden"); $("msg").classList.add("hidden"); }
+
+    function load(){
+      showMsg("Carregant analítica…");
+      $("dash").classList.add("hidden"); $("reload").classList.add("hidden");
+      fetch("/api/mb/cierre").then(r=>r.json()).then(data=>{
+        if(!data.ok){ showMsg(`<h2>Error</h2><p>${esc(data.error)}</p>`); return; }
+        MB = data.mb_base;
+        $("openmb").href = MB + (data.cierre_collection ? "/collection/"+data.cierre_collection : "");
+        if(!data.sharing){
+          showMsg(`<h2>Cal activar el <em>public sharing</em> a Metabase</h2>
+            <p>Per embeure els dashboards del cierre sense demanar login, activa'l una vegada:</p>
+            <ol>
+              <li>Obre <a href="${MB}/admin/settings/public-sharing" target="_blank" rel="noopener">Admin → Settings → Public sharing</a></li>
+              <li>Posa <b>Enable Public Sharing</b> a <b>ON</b></li>
+              <li>Torna aquí i prem <b>Reintentar</b></li>
+            </ol>
+            <p class="warn">⚠️ Els public links són accessibles per qualsevol que tingui l'enllaç (sense login). Ús intern a la LAN.</p>
+            <p><button id="retry">Reintentar</button></p>`);
+          $("retry").onclick = load;
+          return;
+        }
+        if(!data.dashboards.length){
+          showMsg(`<h2>Cap dashboard al cierre encara</h2>
+            <p>Crea'n un a la col·lecció <b>📕 Cierre</b> de <a href="${$("openmb").href}" target="_blank" rel="noopener">Metabase</a> i torna.</p>
+            <p><button id="retry">Reintentar</button></p>`);
+          $("retry").onclick = load; return;
+        }
+        const sel = $("dash");
+        sel.innerHTML = data.dashboards.map(d=>`<option value="${d.uuid}">${esc(d.name)}</option>`).join("");
+        sel.classList.remove("hidden"); $("reload").classList.remove("hidden");
+        const open = () => showFrame(`${MB}/public/dashboard/${sel.value}`);
+        sel.onchange = open; $("reload").onclick = open;
+        open();
+      }).catch(e=> showMsg(`<h2>Error de xarxa</h2><p>${esc(e.message)}</p>`));
+    }
+    load();
+  </script>
+</body>
+</html>

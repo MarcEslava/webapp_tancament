@@ -1,0 +1,47 @@
+# ------------------------------------------------------------------
+# Credencials / secrets -- MAI committejar
+# ------------------------------------------------------------------
+db_config.py
+.env
+.mcp.json
+*.key
+
+# ------------------------------------------------------------------
+# Python
+# ------------------------------------------------------------------
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+env/
+
+# ------------------------------------------------------------------
+# Notebooks (poden portar dades a les sortides)
+# ------------------------------------------------------------------
+*.ipynb
+.ipynb_checkpoints/
+
+# ------------------------------------------------------------------
+# Dades de negoci -- MAI committejar (nomes codi al repo)
+#   Excels/CSV (exports BIFarma, masters, splits, condicions, diners perduts...)
+# ------------------------------------------------------------------
+*.xlsx
+*.xlsm
+*.xls
+*.csv
+output/
+logs/
+splitFiles/inbox/
+splitFiles/pasteFiles/
+splitFiles/refreshed/
+splitFiles/copyFiles/
+Seguiment_v2/Bifarma_exports/
+Seguiment_v2/output/
+Seguiment_v2/splitFiles/
+
+# ------------------------------------------------------------------
+# SO
+# ------------------------------------------------------------------
+Thumbs.db
+.DS_Store

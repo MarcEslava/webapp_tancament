@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protocol de tancament — Seguiment labs</title>
+<style>
+  :root{
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,sans-serif;
+    --mono:ui-monospace,"Cascadia Code","Cascadia Mono",Consolas,"Courier New",monospace;
+    --bg:#F6F8F7; --surface:#FFFFFF; --surface-2:#EEF2F0;
+    --ink:#17211D; --muted:#5C6B64; --line:#DBE3DF; --edge:#A9B8B1;
+    --accent:#147A5B; --accent-soft:#E1F0EA;
+    --manual:#B26A16; --manual-soft:#F7E9D5;
+    --danger:#B23A2E; --danger-soft:#F6E1DE;
+    --shadow:0 1px 2px rgba(20,40,32,.06),0 6px 20px rgba(20,40,32,.05);
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0E1512; --surface:#14201B; --surface-2:#1A2822;
+      --ink:#E7EEE9; --muted:#95A79E; --line:#26362F; --edge:#3C4F46;
+      --accent:#43C79A; --accent-soft:#123128;
+      --manual:#D9A25A; --manual-soft:#33260F;
+      --danger:#E0715F; --danger-soft:#361B18;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1512; --surface:#14201B; --surface-2:#1A2822;
+    --ink:#E7EEE9; --muted:#95A79E; --line:#26362F; --edge:#3C4F46;
+    --accent:#43C79A; --accent-soft:#123128;
+    --manual:#D9A25A; --manual-soft:#33260F;
+    --danger:#E0715F; --danger-soft:#361B18;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.28);
+  }
+  :root[data-theme="light"]{
+    --bg:#F6F8F7; --surface:#FFFFFF; --surface-2:#EEF2F0;
+    --ink:#17211D; --muted:#5C6B64; --line:#DBE3DF; --edge:#A9B8B1;
+    --accent:#147A5B; --accent-soft:#E1F0EA;
+    --manual:#B26A16; --manual-soft:#F7E9D5;
+    --danger:#B23A2E; --danger-soft:#F6E1DE;
+    --shadow:0 1px 2px rgba(20,40,32,.06),0 6px 20px rgba(20,40,32,.05);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    line-height:1.6;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:880px;margin:0 auto;padding:56px 24px 80px;}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 14px;font-weight:600;}
+  h1{font-size:clamp(30px,5vw,46px);line-height:1.05;letter-spacing:-.02em;margin:0 0 16px;
+    text-wrap:balance;font-weight:800;}
+  .lead{font-size:18px;color:var(--muted);max-width:60ch;margin:0 0 26px;}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 8px;}
+  .pill{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;
+    padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);}
+  .dot{width:10px;height:10px;border-radius:3px;flex:none;}
+  .dot.m{background:var(--manual)} .dot.s{background:var(--accent)}
+  section{margin-top:44px;}
+  h2{font-size:13px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;
+    color:var(--muted);font-weight:600;margin:0 0 18px;padding-bottom:10px;border-bottom:1px solid var(--line);}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);}
+  .diagram{padding:20px;overflow-x:auto;}
+  .diagram svg{display:block;min-width:560px;max-width:100%;height:auto;margin:0 auto;}
+  .uml .title{font-family:var(--sans);font-weight:700;font-size:15px;fill:var(--ink);}
+  .uml .sub{font-family:var(--mono);font-size:11px;fill:var(--muted);}
+  .uml .tagtx{font-family:var(--mono);font-size:11px;font-weight:700;fill:#fff;}
+  .uml .chiptx{font-family:var(--mono);font-size:11px;fill:var(--muted);}
+  .uml .lbl{font-family:var(--mono);font-size:11px;fill:var(--muted);}
+  .uml rect.manual{fill:var(--manual-soft);stroke:var(--manual);stroke-width:1.5;}
+  .uml rect.script{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5;}
+  .uml .tag.manual{fill:var(--manual);} .uml .tag.script{fill:var(--accent);}
+  .uml polygon.decision{fill:var(--surface-2);stroke:var(--ink);stroke-width:1.5;}
+  .uml rect.output{fill:none;stroke:var(--edge);stroke-width:1.3;stroke-dasharray:5 4;}
+  .uml .node circle{fill:var(--ink);}
+  .uml .edge{stroke:var(--edge);stroke-width:1.6;fill:none;}
+  /* config table */
+  .tbl{width:100%;border-collapse:collapse;font-size:14px;overflow:hidden;border-radius:12px;}
+  .tbl th,.tbl td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
+  .tbl th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--muted);background:var(--surface-2);font-weight:600;}
+  .tbl tr:last-child td{border-bottom:none;}
+  .tbl code{font-family:var(--mono);font-size:13px;background:var(--surface-2);padding:1px 6px;border-radius:5px;}
+  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);}
+  /* steps */
+  .steps{display:flex;flex-direction:column;gap:16px;}
+  .step{display:grid;grid-template-columns:52px 1fr;gap:18px;background:var(--surface);
+    border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:var(--shadow);
+    position:relative;overflow:hidden;}
+  .step::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent);}
+  .step.man::before{background:var(--manual);}
+  .num{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--ink);line-height:1;padding-top:2px;
+    font-variant-numeric:tabular-nums;}
+  .step h3{margin:0 0 4px;font-size:18px;letter-spacing:-.01em;}
+  .steptag{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;
+    text-transform:uppercase;padding:3px 8px;border-radius:6px;color:#fff;margin-bottom:10px;}
+  .steptag.man{background:var(--manual)} .steptag.scr{background:var(--accent)}
+  .step p{margin:0 0 8px;color:var(--muted);font-size:14.5px;}
+  .step ul{margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:14px;}
+  .step li{margin:4px 0;}
+  .step code,.inline{font-family:var(--mono);font-size:13px;background:var(--surface-2);
+    color:var(--ink);padding:1px 6px;border-radius:5px;}
+  .out{margin-top:10px;font-family:var(--mono);font-size:12.5px;color:var(--accent);}
+  .out.man{color:var(--manual);}
+  pre.cli{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);color:var(--ink);
+    padding:12px 14px;border-radius:10px;overflow-x:auto;margin:10px 0 0;border:1px solid var(--line);}
+  /* callouts */
+  .callouts{display:flex;flex-direction:column;gap:10px;}
+  .callout{display:flex;gap:12px;padding:14px 16px;border-radius:12px;font-size:14px;
+    background:var(--danger-soft);border:1px solid var(--danger);}
+  .callout b{color:var(--danger);}
+  .callout .k{font-family:var(--mono);flex:none;color:var(--danger);font-weight:700;
+    text-transform:uppercase;letter-spacing:.04em;min-width:74px;}
+  .callout.warn{background:var(--manual-soft);border-color:var(--manual);}
+  .callout.warn b{color:var(--manual);} .callout.warn .k{color:var(--manual);}
+  .callout span:last-child{color:var(--ink);}
+  footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
+    font-size:13px;color:var(--muted);font-family:var(--mono);}
+  a{color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Runbook · Tancament mensual</p>
+  <h1>Protocol de tancament — Seguiment de laboratoris</h1>
+  <p class="lead">De la consulta directa al SQL de BIFarma fins als fitxers per laboratori i l'històric acumulat.
+    Tot s'executa des del <b>panell web local</b> (<code>Panell.bat</code> → <code>app.py</code>), que llança
+    els tres scripts i mostra la consola en directe.</p>
+  <div class="legend">
+    <span class="pill"><span class="dot m"></span>Pas manual — el fas a mà</span>
+    <span class="pill"><span class="dot s"></span>Script — Python (des del panell o CLI)</span>
+  </div>
+
+  <section>
+    <h2>Diagrama del procés (UML · activitat)</h2>
+    <div class="card diagram">
+      <svg class="uml" viewBox="0 0 720 1020" role="img"
+           aria-label="Diagrama d'activitat del procés de tancament">
+        <defs>
+          <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--edge)"></path>
+          </marker>
+        </defs>
+
+        <!-- edges -->
+        <g>
+          <line class="edge" x1="360" y1="47" x2="360" y2="60" marker-end="url(#arw)"></line>
+          <line class="edge" x1="360" y1="134" x2="360" y2="159" marker-end="url(#arw)"></line>
+          <line class="edge" x1="360" y1="233" x2="360" y2="248" marker-end="url(#arw)"></line>
+          <line class="edge" x1="360" y1="374" x2="360" y2="394" marker-end="url(#arw)"></line>
+          <line class="edge" x1="360" y1="452" x2="360" y2="473" marker-end="url(#arw)"></line>
+          <line class="edge" x1="360" y1="547" x2="360" y2="569" marker-end="url(#arw)"></line>
+          <line class="edge" x1="360" y1="643" x2="360" y2="662" marker-end="url(#arw)"></line>
+          <line class="edge" x1="360" y1="704" x2="360" y2="725" marker-end="url(#arw)"></line>
+          <line class="edge" x1="360" y1="799" x2="360" y2="821" marker-end="url(#arw)"></line>
+          <line class="edge" x1="360" y1="895" x2="360" y2="913" marker-end="url(#arw)"></line>
+          <line class="edge" x1="360" y1="956" x2="360" y2="975" marker-end="url(#arw)"></line>
+          <!-- loop back: No -> recategoritzar especialitats a BIFarma i repetir el Pas 1 -->
+          <path class="edge" d="M244,311 L74,311 L74,197 L174,197" marker-end="url(#arw)"></path>
+        </g>
+
+        <!-- start -->
+        <g class="node"><circle cx="360" cy="34" r="12"></circle></g>
+
+        <!-- N1 manual: obrir panell -->
+        <g>
+          <rect class="manual" x="176" y="62" width="368" height="72" rx="11"></rect>
+          <rect class="tag manual" x="190" y="74" width="22" height="18" rx="5"></rect>
+          <text class="tagtx" x="201" y="87" text-anchor="middle">M</text>
+          <text class="title" x="224" y="90">Obrir el panell al navegador</text>
+          <text class="sub" x="224" y="110">http://NOM-EQUIP:5099 · «Comprovar servidor i Z:»</text>
+        </g>
+
+        <!-- N2 script: pas 1 index.py -->
+        <g>
+          <rect class="script" x="176" y="161" width="368" height="72" rx="11"></rect>
+          <rect class="tag script" x="190" y="173" width="22" height="18" rx="5"></rect>
+          <text class="tagtx" x="201" y="186" text-anchor="middle">S</text>
+          <text class="title" x="224" y="189">Pas 1 · index.py — Generar mestre</text>
+          <text class="sub" x="224" y="209">SQL BIFarma → neteja → mestre + CSVs</text>
+        </g>
+
+        <!-- decision -->
+        <g>
+          <polygon class="decision" points="360,248 476,311 360,374 244,311"></polygon>
+          <text class="title" x="360" y="308" text-anchor="middle" font-size="13">Checks OK?</text>
+          <text class="sub" x="360" y="326" text-anchor="middle">amox · almirall · menaven</text>
+          <text class="lbl" x="92" y="300">No · recategoritzar</text>
+          <text class="lbl" x="374" y="390">Sí</text>
+        </g>
+
+        <!-- output chip 1 -->
+        <g>
+          <rect class="output" x="146" y="396" width="428" height="56" rx="8"></rect>
+          <text class="chiptx" x="360" y="419" text-anchor="middle">output/df_bifarma_output[period].xlsx</text>
+          <text class="chiptx" x="360" y="437" text-anchor="middle">product_conditions.csv · lost_money.csv</text>
+        </g>
+
+        <!-- N3 manual: master -->
+        <g>
+          <rect class="manual" x="176" y="475" width="368" height="72" rx="11"></rect>
+          <rect class="tag manual" x="190" y="487" width="22" height="18" rx="5"></rect>
+          <text class="tagtx" x="201" y="500" text-anchor="middle">M</text>
+          <text class="title" x="224" y="503">Muntar Parafarmacia {MM.AAAA}</text>
+          <text class="sub" x="224" y="523">full «SI Acord book» + taules dinàmiques (a Z:)</text>
+        </g>
+
+        <!-- N4 script: pas 2 clsSplit -->
+        <g>
+          <rect class="script" x="176" y="571" width="368" height="72" rx="11"></rect>
+          <rect class="tag script" x="190" y="583" width="22" height="18" rx="5"></rect>
+          <text class="tagtx" x="201" y="596" text-anchor="middle">S</text>
+          <text class="title" x="224" y="599">Pas 2 · clsSplit.py — Split per lab</text>
+          <text class="sub" x="224" y="619">passos: split · fee · refresh · accumulate · cleanup</text>
+        </g>
+
+        <!-- output chip 2 -->
+        <g>
+          <rect class="output" x="156" y="664" width="408" height="40" rx="8"></rect>
+          <text class="chiptx" x="360" y="689" text-anchor="middle">splitFiles/pasteFiles/PARAFARMACIA {MM.AAAA} - {LAB}.xlsx</text>
+        </g>
+
+        <!-- N5 manual: distribució -->
+        <g>
+          <rect class="manual" x="176" y="727" width="368" height="72" rx="11"></rect>
+          <rect class="tag manual" x="190" y="739" width="22" height="18" rx="5"></rect>
+          <text class="tagtx" x="201" y="752" text-anchor="middle">M</text>
+          <text class="title" x="224" y="755">Distribució</text>
+          <text class="sub" x="224" y="775">102. Informes i Rappel\{any}\{MM.AAAA}\mes</text>
+        </g>
+
+        <!-- N6 script: pas 3 clsSeguiment -->
+        <g>
+          <rect class="script" x="176" y="823" width="368" height="72" rx="11"></rect>
+          <rect class="tag script" x="190" y="835" width="22" height="18" rx="5"></rect>
+          <text class="tagtx" x="201" y="848" text-anchor="middle">S</text>
+          <text class="title" x="224" y="851">Pas 3 · clsSeguiment.py — Històric</text>
+          <text class="sub" x="224" y="871">recorre {any ≥ min}\{MM.AAAA}\mes · afegeix fees</text>
+        </g>
+
+        <!-- output chip 3 -->
+        <g>
+          <rect class="output" x="176" y="916" width="368" height="40" rx="8"></rect>
+          <text class="chiptx" x="360" y="941" text-anchor="middle">102. Informes i Rappel\Seguiment_labs.csv</text>
+        </g>
+
+        <!-- end -->
+        <g class="node">
+          <circle cx="360" cy="992" r="14" fill="none" stroke="var(--ink)" stroke-width="1.5"></circle>
+          <circle cx="360" cy="992" r="8"></circle>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <section>
+    <h2>El panell en un cop d'ull</h2>
+    <div class="tblwrap">
+      <table class="tbl">
+        <thead><tr><th>Pas del panell</th><th>Script</th><th>Paràmetres</th><th>Sortida</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>1 · Generar mestre</b></td>
+            <td><code>index.py</code></td>
+            <td>Any / Mes / Temporalitat (mensual o YTD) · Rappel (<code>BIFARMA</code> / <code>bifarma</code> con BAJAS) ·
+                «Només parafarmàcia» · Laboratori (informe d'un sol lab, llista del Mapa_Acords)</td>
+            <td><code>output/df_bifarma_output[period].xlsx</code> + <code>product_conditions.csv</code> + <code>lost_money.csv</code></td>
+          </tr>
+          <tr>
+            <td><b>2 · Split per laboratori</b></td>
+            <td><code>clsSplit.py</code></td>
+            <td>Any / Mes / Temporalitat · passos seleccionables:
+                <code>split</code>, <code>fee</code>, <code>refresh</code>, <code>accumulate</code>, <code>cleanup</code></td>
+            <td><code>splitFiles/pasteFiles/</code> — un xlsx per laboratori</td>
+          </tr>
+          <tr>
+            <td><b>3 · Històric</b></td>
+            <td><code>clsSeguiment.py</code></td>
+            <td>Any mínim (per defecte 2024) · Any (campanya del fitxer SEGUIMENT)</td>
+            <td><code>Seguiment_labs.csv</code> (a la carpeta rappel de Z:)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="color:var(--muted);font-size:14px;margin-top:12px">
+      Per defecte, el període és <b>l'últim mes tancat</b> (avui − 1 mes). El panell només permet
+      <b>una execució alhora</b> i té dues pestanyes de dades: <b>Condicions de producte</b>
+      (PVL/IVA/MARCA per Cod Unif) i <b>Diners perduts</b> (per lab, % del SI sense condicions),
+      amb cerca, filtre per lab i descàrrega CSV.
+    </p>
+    <pre class="cli">« Equivalents per línia de comandes »
+python index.py --rappel BIFARMA --period YTD --year 2026 --month 6 [--only-para] [--laboratori "NOM LAB"]
+python clsSplit.py --period "" --year 2026 --month 6 --steps split,refresh [--laboratori "NOM LAB"]
+python clsSeguiment.py --min-year 2024 --year 2026</pre>
+  </section>
+
+  <section>
+    <h2>Passos detallats</h2>
+    <div class="steps">
+
+      <div class="step man">
+        <div class="num">00</div>
+        <div>
+          <span class="steptag man">Manual</span>
+          <h3>Obrir el panell i comprovar l'entorn</h3>
+          <p>El panell viu en <b>una sola màquina</b> (la que té Excel i la unitat <b>Z:</b>) i tothom hi entra
+             pel navegador: <span class="inline">http://NOM-EQUIP:5099</span>. <b>No cal instal·lar res al teu PC.</b></p>
+          <ul>
+            <li>Prémer <b>«Comprovar servidor i Z:»</b>: valida la connexió SQL i l'accés real a la carpeta rappel de Z:. Es comprova <b>des del servidor</b>, que és qui hi ha de tenir accés.</li>
+            <li>Només una execució alhora: si algú altre està executant, la consola diu què hi ha en marxa i des de quina adreça. Tancar la pestanya <b>no atura</b> el procés.</li>
+            <li>Muntar la màquina servidor és feina d'un sol cop — veure <code>docs/INSTALLACIO_SERVIDOR.md</code> (inclou per què no es pot fer amb Docker: el Pas 2 necessita un Excel real per refrescar les taules dinàmiques).</li>
+            <li>Per executar-ho al teu propi equip (servidor fora de servei, o proves): cal Windows amb Excel i la Z: mapada, executar <code>Panell.bat</code> i tenir <code>db_config.py</code> amb les credencials del SQL (copiar de <code>db_config.example.py</code>; està al <code>.gitignore</code>, no es puja mai).</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="num">01</div>
+        <div>
+          <span class="steptag scr">Script</span>
+          <h3>Pas 1 · index.py — Generar mestre</h3>
+          <p><b>Ja no cal exportar manualment de BIFarma Eco</b>: el script consulta directament el SQL
+             (any actual + any anterior, només farmàcies del grup ECO i labs presents a Zoho), neteja i creua amb els fitxers de suport de Z::</p>
+          <ul>
+            <li><span class="inline">Mapa_Acords.xlsx</span> (labs amb acord) i <span class="inline">BBDD_Book INTERN.xlsx</span> (NIF/BOOK/SOLAR).</li>
+            <li><span class="inline">Parafarmacia MM.AAAA YTD.xlsx</span> → PVL / IVA / MARCA / SUBMARCA. Agafa el del <b>mes processat</b> si ja existeix (cas del tancament mensual); si no —generant el YTD mateix—, el <b>YTD anterior més recent</b>, buscant també a les carpetes d'any on s'arxiven els mesos tancats. Els productes que no hi són surten amb MARCA <b>«New!»</b>.</li>
+            <li><b>Checks d'especialitats</b> (amoxi Reig Jofre, ESERTIA/PARAPRES Almirall, MENAVEN Menarini): si en falta cap, el script s'atura → recategoritzar a BIFarma i repetir. Amb «Només parafarmàcia» o amb un laboratori concret <b>els checks se salten</b>.</li>
+            <li>Comprovar a la consola: <span class="inline">ok RJ</span>, <span class="inline">ok Almirall</span>, <span class="inline">ok Menarini</span>, «No duplicates found».</li>
+            <li>Amb <b>Laboratori</b> seleccionat (llista de la columna <span class="inline">Laboratori</span> del Mapa_Acords): la SQL es filtra als noms/codis BIF d'aquell lab, l'informe surt en un fitxer a part (<span class="inline">output/df_bifarma_output[period]_{LAB}.xlsx</span>) i <b>no</b> toca els CSV globals. <b>El Pas 1 acaba aquí</b>: no encadena res. Si en vols el fitxer de split, es demana explícitament al <b>Pas 2</b> amb el mateix laboratori seleccionat.</li>
+            <li><b>Cada pas s'executa per separat.</b> Cap pas del panell engega un altre pas pel seu compte: si no marques una casella, allò no s'executa.</li>
+          </ul>
+          <div class="out">→ output/df_bifarma_output[period].xlsx · full «SI Acord book» · + product_conditions.csv i lost_money.csv</div>
+        </div>
+      </div>
+
+      <div class="step man">
+        <div class="num">02</div>
+        <div>
+          <span class="steptag man">Manual</span>
+          <h3>Muntar el fitxer mestre Parafarmacia</h3>
+          <p>Portar les dades del mestre generat a <span class="inline">Parafarmacia {MM.AAAA}[ YTD].xlsx</span>
+             (carpeta rappel de Z:), full <b>SI Acord book</b>, mantenint les taules dinàmiques.
+             És el fitxer que llegeix el Pas 2, i el YTD també alimenta els PVL/IVA/MARCA del Pas 1 següent.</p>
+          <p>Revisar les <b>marques noves («New!»)</b> i completar MARCA/SUBMARCA a mà — la pestanya
+             <b>Diners perduts</b> del panell diu a quins labs cal prioritzar.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="num">03</div>
+        <div>
+          <span class="steptag scr">Script</span>
+          <h3>Pas 2 · clsSplit.py — repartir per laboratori</h3>
+          <p>La llista de labs surt del fitxer <span class="inline">a.SEGUIMENT LABS {any}.xlsx</span>
+             (fulls Parafarmacia + EFG) més els <span class="inline">EXTRA_LABS</span> del codi. Cada lab es crea
+             copiant la plantilla única <span class="inline">splitFiles/template.xlsx</span>. Passos seleccionables:</p>
+          <ul>
+            <li><b>split</b> — copia plantilles i escriu el full <span class="inline">Acuerdo book</span> de cada lab.</li>
+            <li><b>fee</b> — full <b>Fee</b> per farmàcia: base <span class="inline">Compra PUC</span> si Neto=Sí, si no <span class="inline">Compra PVL</span>; fee = Fijo×base (+ Variable×base si n'hi ha) + total. Els labs sense condicions queden marcats.</li>
+            <li><b>refresh</b> — obre cada fitxer amb Excel (COM), refresca fórmules, amaga «Acuerdo book» i desa. ⚠️ <b>Tancar tots els Excel abans.</b> Si Excel peta, es reinicia sol i reintenta el fitxer.</li>
+            <li><b>accumulate</b> — afegeix el mes a <span class="inline">accumulated_labs.csv</span> (substitueix el mes si ja hi era).</li>
+            <li><b>cleanup</b> — esborra de <span class="inline">pasteFiles</span> els fitxers de més de 30 dies.</li>
+          </ul>
+          <p>Els passos són <b>independents</b>: es poden executar d'un en un i en execucions separades. Si no se'n marca cap, el script no fa res i acaba amb un avís — mai no fa el split «per defecte».</p>
+          <p><b>Comprovar a la consola:</b> el pas <b>split</b> imprimeix les files de cada lab i, al final, dos avisos — <b>informes BUITS</b> (labs del SEGUIMENT sense cap fila: o no tenen compres aquest mes, o el nom no coincideix amb la columna <span class="inline">Laboratori</span> del Mapa_Acords) i <b>categories amb dades que no van a cap informe</b> (valors de <span class="inline">Laboratorio Categorizado</span> que cap lab de la llista reclama, <span class="inline">#N/D</span> inclòs). El creuament es fa per <span class="inline">Laboratorio Categorizado</span>, que el Pas 1 ja omple amb l'etiqueta <span class="inline">Laboratori</span> del Mapa_Acords: el Pas 2 no torna a consultar el Mapa_Acords.</p>
+          <p>Amb el desplegable <b>Laboratori</b> del Pas 2 (o <span class="inline">--laboratori "NOM LAB"</span>) es llegeix <b>el mateix mestre del mes que el split complet</b> (<span class="inline">Parafarmacia {MM.AAAA}[ YTD].xlsx</span> de Z:) i s'hi busca el lab per <span class="inline">Laboratorio Categorizado</span>: el mateix creuament, escrivint un sol llibre. <b>No depèn del Pas 1.</b> Les marques reclassificades fora del lab (p. ex. <b>SENSILIS</b> fora de DERMOFARM) ja porten un altre <span class="inline">Laboratorio Categorizado</span> al mestre i surten a l'execució del seu propi lab. <b>fee</b> i <b>refresh</b> només toquen aquest fitxer; <b>accumulate</b> i <b>cleanup</b> són globals i s'ignoren (amb avís). Si el llibre surt <b>buit</b>, el pas acaba amb error i no refresca. El mestre és la font de veritat: un canvi al Mapa_Acords o a la categorització del Pas 1 no es veu al split fins que el mestre es torna a muntar.</p>
+          <div class="out">→ splitFiles/pasteFiles/PARAFARMACIA {MM.AAAA}[ YTD] - {LAB}.xlsx</div>
+        </div>
+      </div>
+
+      <div class="step man">
+        <div class="num">04</div>
+        <div>
+          <span class="steptag man">Manual</span>
+          <h3>Distribució</h3>
+          <p>Col·locar els fitxers a <span class="inline">102. Informes i Rappel\{any}\{MM.AAAA}\mes\</span>
+             i/o enviar-los als laboratoris. Aquesta estructura és la que després llegeix el Pas 3.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="num">05</div>
+        <div>
+          <span class="steptag scr">Script</span>
+          <h3>Pas 3 · clsSeguiment.py — històric acumulat</h3>
+          <p>Recorre <span class="inline">{any ≥ any mínim}\{MM.AAAA}\mes\</span>, llegeix el full
+             <b>Acuerdo book</b> de cada PARAFARMACIA (salta YTD i (NC)), hi afegeix les condicions de fee
+             del SEGUIMENT de la campanya i ho desa a CSV (separador <code>;</code>).</p>
+          <div class="out">→ 102. Informes i Rappel\Seguiment_labs.csv</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>Pestanyes de dades del panell</h2>
+    <div class="tblwrap">
+      <table class="tbl">
+        <thead><tr><th>Pestanya</th><th>Font</th><th>Què mostra</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>Condicions de producte</b></td>
+            <td><code>output/product_conditions.csv</code></td>
+            <td>PVL / IVA / MARCA / SUBMARCA per <code>Cod Unif</code>. S'actualitza (upsert) a cada execució
+                del Pas 1: l'última execució mana per producte. Cerca, filtre per lab i descàrrega CSV (filtrable).</td>
+          </tr>
+          <tr>
+            <td><b>Diners perduts</b></td>
+            <td><code>output/lost_money.csv</code></td>
+            <td>Per lab: segons si el fee és sobre compra <b>neta (PUC → camp clau IVA)</b> o
+                <b>bruta (PVL → camp clau PVL)</b> (fitxer SEGUIMENT), % del <b>SI (€) total</b> amb el camp clau
+                a 0 / N/D / producte nou — diners sobre els quals no es pot calcular fee. Ponderat pel SI.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Punts crítics i errors habituals</h2>
+    <div class="callouts">
+      <div class="callout"><span class="k">excel</span><span><b>Tancar tots els Excel abans del «refresh».</b> El refresc es fa per COM: amb llibres oberts pot fallar o corrompre l'execució. Si Excel mor (RPC unavailable), el script en reinicia un de nou i reintenta el fitxer una vegada.</span></div>
+      <div class="callout warn"><span class="k">checks</span><span><b>Especialitats mal categoritzades aturen el Pas 1.</b> Si falten amoxi / ESERTIA·PARAPRES / MENAVEN, el script s'atura amb un avís: recategoritzar a BIFarma i tornar a executar. (Amb «Només parafarmàcia» o un sol laboratori, els checks no s'apliquen.)</span></div>
+      <div class="callout warn"><span class="k">marques</span><span><b>MARCA/SUBMARCA és feina manual.</b> Ve del Parafarmacia YTD del mes processat, o del més recent anterior si aquell encara no existeix; els productes nous surten com <b>«New!»</b> i sense PVL/IVA no computen fee. Fer servir la pestanya «Diners perduts» per prioritzar i mantenir els mateixos criteris que el mes anterior perquè l'històric sigui comparable.</span></div>
+      <div class="callout warn"><span class="k">prerequisits</span><span><b>Fitxers de Z: que han d'existir</b>: <code>Mapa_Acords.xlsx</code>, <code>BBDD_Book INTERN.xlsx</code>, <code>a.SEGUIMENT LABS {any}.xlsx</code> i almenys un <code>Parafarmacia MM.AAAA YTD.xlsx</code> (del mes processat o d'un mes anterior). El botó «Comprovar servidor i Z:» valida l'accés a la carpeta.</span></div>
+      <div class="callout warn"><span class="k">negatius</span><span><b>Els valors negatius es tallen a 0.</b> Al muntar el mestre, les quantitats/imports negatius (abonaments, retorns) es converteixen en 0 — tenir-ho present si els totals no quadren amb BIFarma.</span></div>
+      <div class="callout"><span class="k">credencials</span><span><b><code>db_config.py</code> mai al git.</b> Conté les credencials del SQL; està al <code>.gitignore</code>. Per configurar una màquina nova, copiar <code>db_config.example.py</code>.</span></div>
+    </div>
+  </section>
+
+  <footer>Actualitzat el 17-07-2026 a partir del codi (app.py · index.py · clsSplit.py · clsSeguiment.py).
+    El flux antic amb exports manuals de BIFarma ja no aplica: el Pas 1 llegeix directament del SQL.</footer>
+</div>
+
+</body>
+</html>

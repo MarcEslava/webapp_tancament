@@ -1,0 +1,12 @@
+# WebApp Tancament -- pip install -r requirements.txt
+# pandas pinned <3: the pipeline is validated on the 2.x behavior.
+flask>=2.2
+pandas>=2.1,<3
+python-dateutil
+sqlalchemy>=2,<3
+pymssql
+xlsxwriter
+openpyxl
+# Capa analitica: ClickHouse (base `tancament`), via store_ch.py -> HTTP amb la stdlib,
+# sense cap driver extra. DuckDB retirat.
+pywin32; sys_platform == "win32"

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Editor de productes · Tancament</title>
+  <style>
+    /* Totalment autònom: NO enllaça style.css del panell, que definia .num (i input,select
+       globals) i col·lisionava amb les columnes PVL/IVA. Aquí tot l'estil és propi. */
+    body{margin:0;background:#f4f7f1;color:#16211b;font-size:14px;
+         font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+    .ed-wrap{max-width:1200px;margin:0 auto;padding:22px 26px}
+    .ed-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+    .ed-head h1{font-size:22px;margin:0}
+    .ed-head a{font-size:13px;text-decoration:none;opacity:.8}
+    .ed-sub{opacity:.7;font-size:13px;margin:0 0 18px}
+    .ed-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+    .ed-bar input[type=text]{flex:1;min-width:220px;padding:9px 12px;border-radius:9px;border:1px solid var(--line,#d2dbcb);font-size:14px}
+    .ed-bar button{padding:9px 16px;border-radius:9px;border:0;background:#1f7b41;color:#fff;font-weight:600;cursor:pointer;font-size:14px}
+    .ed-bar button.ghost{background:#eef3ec;color:#1f7b41}
+    .ed-bar label{font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+    .ed-status{font-size:13px;opacity:.8;min-height:20px;margin:8px 2px}
+    .ed-status.err{color:#bc4436;opacity:1;font-weight:600}
+    .ed-status.ok{color:#1f7b41;opacity:1;font-weight:600}
+    .ed-tablewrap{overflow-x:auto;overflow-y:auto;border:1px solid var(--line,#e1e8dd);border-radius:12px;background:#fff}
+    table.ed{border-collapse:collapse;width:100%;min-width:1040px;font-size:13px;table-layout:fixed}
+    table.ed th,table.ed td{padding:7px 10px;border-bottom:1px solid #eef1ec;text-align:left;white-space:nowrap;overflow:hidden}
+    table.ed th{position:sticky;top:0;background:#f3f6f0;font-weight:600;z-index:1}
+    /* amplades fixes perquè PVL/IVA no s'aixafin */
+    table.ed col.c-cod{width:90px} table.ed col.c-prod{width:340px} table.ed col.c-lab{width:150px}
+    table.ed col.c-marca{width:170px} table.ed col.c-sub{width:150px} table.ed col.c-num{width:95px}
+    table.ed td.num,table.ed th.num{text-align:right}
+    table.ed input{width:100%;box-sizing:border-box;padding:5px 7px;border:1px solid #dfe6da;border-radius:6px;font-size:13px;background:#fff}
+    table.ed input.n{text-align:right}
+    table.ed tr.miss td:first-child{box-shadow:inset 3px 0 0 #d99a2b}
+    table.ed tr.dirty{background:#fff8e6}
+    td.prod{max-width:360px;overflow:hidden;text-overflow:ellipsis}
+    .badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:20px;background:#fbeccb;color:#9a6a12;font-weight:600}
+    .foot{opacity:.6;font-size:12px;margin-top:14px}
+  </style>
+</head>
+<body>
+  <div class="ed-wrap">
+    <div class="ed-head">
+      <h1>Editor de productes</h1>
+      <a href="/">← Torna al panell</a>
+    </div>
+    <p class="ed-sub">Edita <b>PVL · IVA · MARCA · SUBMARCA</b> per producte. Es guarda a
+      ClickHouse (<code>dim_producte</code>), la font gobernada que <b>Pas 1 llegeix</b> —
+      substitueix la feina manual al YTD Excel. Els <span class="badge">New!</span> i mancances surten primer.</p>
+
+    <div class="ed-bar">
+      <input type="text" id="q" placeholder="Cerca per codi, producte o laboratori… (Enter)">
+      <label><input type="checkbox" id="missing"> Només mancances (New!/PVL/IVA a 0)</label>
+      <button id="btnSearch">Cerca</button>
+      <button id="btnSave" class="ghost">Desa canvis</button>
+    </div>
+    <div class="ed-status" id="status">Escriu i prem <b>Cerca</b> (o marca «Només mancances»).</div>
+
+    <div class="ed-tablewrap">
+      <table class="ed">
+        <colgroup>
+          <col class="c-cod"><col class="c-prod"><col class="c-lab">
+          <col class="c-marca"><col class="c-sub"><col class="c-num"><col class="c-num">
+        </colgroup>
+        <thead><tr>
+          <th>Cod Unif</th><th>Producte</th><th>Laboratori</th>
+          <th>MARCA</th><th>SUBMARCA</th><th class="num">PVL</th><th class="num">IVA</th>
+        </tr></thead>
+        <tbody id="rows"><tr><td colspan="7" style="opacity:.6;padding:16px">—</td></tr></tbody>
+      </table>
+    </div>
+    <p class="foot">Cada desat insereix una versió nova (ReplacingMergeTree: l'última mana). El tancament reescriu els mateixos valors, així que l'edició no es perd.</p>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const rowsEl = $("rows"), statusEl = $("status");
+    const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+    const numFmt = v => (v==null||v===""||isNaN(v))?"":Number(v).toLocaleString("ca-ES",{maximumFractionDigits:4});
+    const parseNum = v => { v=(v||"").trim().replace(",","."); if(v==="")return null; const n=parseFloat(v); return isNaN(n)?null:n; };
+
+    function setStatus(msg, kind){ statusEl.className = "ed-status" + (kind?(" "+kind):""); statusEl.innerHTML = msg; }
+
+    function rowHtml(r){
+      const miss = (r.marca==="New!"||r.marca===""||r.pvl==null||r.pvl===0||r.iva==null||r.iva===0);
+      const badge = r.marca==="New!" ? ' <span class="badge">New!</span>' : "";
+      return `<tr data-cod="${esc(r.cod_unif)}" class="${miss?'miss':''}">
+        <td>${esc(r.cod_unif)}</td>
+        <td class="prod" title="${esc(r.producte)}">${esc(r.producte)}</td>
+        <td>${esc(r.laboratori_categoritzat)}</td>
+        <td><input class="w" data-f="marca" data-orig="${esc(r.marca)}" value="${esc(r.marca)}">${badge}</td>
+        <td><input class="w" data-f="submarca" data-orig="${esc(r.submarca)}" value="${esc(r.submarca)}"></td>
+        <td class="num"><input class="n" data-f="pvl" data-orig="${r.pvl==null?"":r.pvl}" value="${numFmt(r.pvl)}"></td>
+        <td class="num"><input class="n" data-f="iva" data-orig="${r.iva==null?"":r.iva}" value="${numFmt(r.iva)}"></td>
+      </tr>`;
+    }
+
+    async function cerca(){
+      setStatus("Cercant…");
+      const q = encodeURIComponent($("q").value.trim());
+      const missing = $("missing").checked ? "1" : "";
+      try{
+        const res = await fetch(`/api/productes?q=${q}&missing=${missing}&limit=300`);
+        const data = await res.json();
+        if(!data.ok){ setStatus("Error: "+esc(data.error), "err"); return; }
+        if(!data.rows.length){ rowsEl.innerHTML = `<tr><td colspan="7" style="opacity:.6;padding:16px">Cap resultat.</td></tr>`; setStatus("0 productes."); return; }
+        rowsEl.innerHTML = data.rows.map(rowHtml).join("");
+        rowsEl.querySelectorAll("input").forEach(inp => inp.addEventListener("input", () => {
+          const tr = inp.closest("tr");
+          const dirty = Array.from(tr.querySelectorAll("input")).some(x => x.value.trim() !== (x.dataset.orig||"").trim());
+          tr.classList.toggle("dirty", dirty);
+        }));
+        setStatus(`${data.rows.length} productes. Edita i prem <b>Desa canvis</b>.`);
+      }catch(e){ setStatus("Error de xarxa: "+esc(e.message), "err"); }
+    }
+
+    async function desa(){
+      const edits = [];
+      rowsEl.querySelectorAll("tr.dirty").forEach(tr => {
+        const e = { cod_unif: Number(tr.dataset.cod) };
+        tr.querySelectorAll("input").forEach(inp => {
+          const f = inp.dataset.f, v = inp.value;
+          e[f] = (f==="pvl"||f==="iva") ? parseNum(v) : v.trim();
+        });
+        edits.push(e);
+      });
+      if(!edits.length){ setStatus("No hi ha canvis per desar."); return; }
+      setStatus(`Desant ${edits.length} producte(s)…`);
+      try{
+        const res = await fetch("/api/productes/desa", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({edits})});
+        const data = await res.json();
+        if(!data.ok){ setStatus("Error desant: "+esc(data.error), "err"); return; }
+        setStatus(`✓ ${data.n} producte(s) desats a ClickHouse.`, "ok");
+        cerca(); // rellegeix els valors canònics guardats
+      }catch(e){ setStatus("Error de xarxa: "+esc(e.message), "err"); }
+    }
+
+    $("btnSearch").addEventListener("click", cerca);
+    $("btnSave").addEventListener("click", desa);
+    $("q").addEventListener("keydown", e => { if(e.key==="Enter") cerca(); });
+    $("missing").addEventListener("change", cerca);
+
+    // Autocarrega en obrir: mostra els que necessiten curació (New!/mancances)
+    // per no ensenyar una taula buida.
+    $("missing").checked = true;
+    cerca();
+  </script>
+</body>
+</html>
